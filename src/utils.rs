@@ -1,3 +1,4 @@
+use csv::Writer;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -37,4 +38,12 @@ pub fn find_taxon(taxon: String, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<F
             .filter(|x| x.taxon.contains(&taxon))
             .collect()
     }
+}
+
+pub fn result_to_csv(data: Vec<FunGuildEntry>) -> String {
+    let mut writer = Writer::from_writer(vec![]);
+    for record in data {
+        writer.serialize(record).unwrap();
+    }
+    String::from_utf8(writer.into_inner().unwrap()).unwrap()
 }
