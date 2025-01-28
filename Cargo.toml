@@ -8,7 +8,7 @@ homepage = "https://github.com/Ebedthan/funguild"
 categories = ["command-line-utilities"]
 keywords = ["bioinformatics"]
 repository = "https://github.com/Ebedthan/funguild"
-
+rust-version = "1.74.1"
 
 [dependencies]
 anyhow = "1"
