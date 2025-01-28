@@ -1,7 +1,14 @@
 [package]
 name = "funguild"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
+description = "Fetch the functional guild of a taxon based on FunGuild data."
+homepage = "https://github.com/Ebedthan/funguild"
+categories = ["command-line-utilities"]
+keywords = ["bioinformatics"]
+repository = "https://github.com/Ebedthan/funguild"
+
 
 [dependencies]
 anyhow = "1"
@@ -9,3 +16,11 @@ clap = "4"
 csv = "1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+debug = true
+overflow-checks = false
+lto = 'thin'
+panic = 'abort'
+incremental = false
