@@ -1,0 +1,11 @@
+[package]
+name = "funguild"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = "4"
+flate2 = "1.0"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
