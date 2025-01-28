@@ -6,49 +6,62 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
-use utils::find_taxon;
+use utils::{find_taxon, FunGuildEntry};
 
 fn main() -> anyhow::Result<()> {
     // Get CLI arguments
     let matches = cli::build_app().get_matches_from(env::args_os());
-    // Read in FunGuild Data
-    let db: Vec<utils::FunGuildEntry> = utils::json_to_hashmap()?;
 
-    // Parse CLI arguments
-    let mut taxon = Vec::new();
-    if let Some(filepath) = matches.get_one::<String>("file") {
+    // Load FunGuild database
+    let db: Vec<FunGuildEntry> = utils::json_to_hashmap()?;
+
+    // Parse CLI arguments for taxa input
+    let taxon = if let Some(filepath) = matches.get_one::<String>("file") {
         let file =
             File::open(filepath).with_context(|| format!("Failed to open file {}", filepath))?;
-        for line in BufReader::new(file)
+        BufReader::new(file)
             .lines()
-            .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
-        {
-            taxon.push(line);
-        }
+            .collect::<Result<Vec<_>, _>>()
+            .with_context(|| format!("Failed to read lines from file {}", filepath))?
     } else {
-        taxon.push(matches.get_one::<String>("TAXON").unwrap().to_string());
-    }
+        vec![matches
+            .get_one::<String>("TAXON")
+            .with_context(|| "TAXON argument is required")?
+            .to_string()]
+    };
+
+    // Additional CLI arguments
     let output = matches.get_one::<String>("out");
     let is_word = matches.get_flag("word");
     let force_output = matches.get_flag("force");
 
     //  Find FunGuild by taxon
-    let result = find_taxon(taxon, db, is_word);
+    let result = find_taxon(&taxon, &db, is_word);
 
-    // Parse result as csv and output it
-    let result_as_csv = utils::result_to_csv(result)?;
+    // Convert result to CSV
+    let result_as_csv = utils::result_to_csv(&result)?;
+
+    // Handle output: parse result as csv and output it
     if let Some(filename) = output {
-        if force_output {
-            fs::remove_file(Path::new(filename))
+        let path = Path::new(filename);
+        if path.exists() && !force_output {
+            anyhow::bail!(
+                "File '{}' already exists. Use --force to overwrite.",
+                filename
+            );
+        }
+        if force_output && path.exists() {
+            fs::remove_file(path)
                 .with_context(|| format!("Failed to remove file at {}", filename))?;
         }
-        let mut outfile =
-            File::open(filename).with_context(|| format!("Failed to open file at {}", filename))?;
-        outfile.write_all(result_as_csv.as_bytes())?;
+        File::create(path)
+            .and_then(|mut file| file.write_all(result_as_csv.as_bytes()))
+            .with_context(|| format!("Failed to write {}", filename))?;
     } else {
-        let stdout = io::stdout();
-        let mut handle = stdout.lock();
-        handle.write_all(result_as_csv.as_bytes())?;
+        io::stdout()
+            .lock()
+            .write_all(result_as_csv.as_bytes())
+            .with_context(|| "Failed to write output to stdout")?;
     }
 
     Ok(())

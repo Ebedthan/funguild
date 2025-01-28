@@ -1,7 +1,6 @@
 use anyhow::Context;
 use csv::Writer;
 use serde::{Deserialize, Serialize};
-use std::io::{BufReader, Read};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -22,45 +21,31 @@ pub struct FunGuildEntry {
 
 pub fn json_to_hashmap() -> anyhow::Result<Vec<FunGuildEntry>> {
     static FUNGUILD_DB: &str = include_str!(r"funguild2.json");
-    let mut reader = BufReader::new(FUNGUILD_DB.as_bytes());
-    let mut buffer = String::new();
-    reader
-        .read_to_string(&mut buffer)
-        .with_context(|| format!("Failed to read data to string"))?;
-    let db: Vec<FunGuildEntry> =
-        serde_json::from_str(&buffer).with_context(|| format!("Failed to deserialize string"))?;
-    Ok(db)
+    serde_json::from_str(FUNGUILD_DB)
+        .with_context(|| "Failed to deserialize JSON data into FunGuildEntry")
 }
 
-pub fn find_taxon(taxon: Vec<String>, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<FunGuildEntry> {
-    let mut result: Vec<FunGuildEntry> = Vec::new();
-    for tax in taxon {
-        if is_word {
-            let mut filtered = db
-                .clone()
-                .into_iter()
-                .filter(|x| x.taxon == tax)
-                .collect::<Vec<FunGuildEntry>>();
-            result.append(&mut filtered);
-        } else {
-            let mut filtered = db
-                .clone()
-                .into_iter()
-                .filter(|x| x.taxon.contains(&tax))
-                .collect::<Vec<FunGuildEntry>>();
-            result.append(&mut filtered)
-        }
-    }
-    result
+pub fn find_taxon(taxa: &[String], db: &[FunGuildEntry], is_word: bool) -> Vec<FunGuildEntry> {
+    taxa.iter()
+        .flat_map(|taxon| {
+            db.iter().filter(move |entry| {
+                if is_word {
+                    entry.taxon == *taxon
+                } else {
+                    entry.taxon.contains(taxon)
+                }
+            })
+        })
+        .cloned()
+        .collect()
 }
 
-pub fn result_to_csv(data: Vec<FunGuildEntry>) -> anyhow::Result<String> {
+pub fn result_to_csv(data: &[FunGuildEntry]) -> anyhow::Result<String> {
     let mut writer = Writer::from_writer(vec![]);
     for record in data {
         writer
             .serialize(record)
-            .with_context(|| format!("Failed to serialize record"))?;
+            .with_context(|| "Failed to serialize record")?;
     }
-    Ok(String::from_utf8(writer.into_inner()?)
-        .with_context(|| format!("Failed to convert to String"))?)
+    String::from_utf8(writer.into_inner()?).with_context(|| "Failed to convert to String")
 }
