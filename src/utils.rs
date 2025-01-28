@@ -1,7 +1,5 @@
 use csv::Writer;
-use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
 use std::io::{BufReader, Read};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -22,8 +20,8 @@ pub struct FunGuildEntry {
 }
 
 pub fn json_to_hashmap() -> Vec<FunGuildEntry> {
-    let file = File::open("funguild2.json.gz").unwrap();
-    let mut reader = BufReader::new(GzDecoder::new(file));
+    static FUNGUILD_DB: &str = include_str!(r"funguild2.json");
+    let mut reader = BufReader::new(FUNGUILD_DB.as_bytes());
     let mut buffer = String::new();
     reader.read_to_string(&mut buffer).unwrap();
     let db: Vec<FunGuildEntry> = serde_json::from_str(&buffer).unwrap();
