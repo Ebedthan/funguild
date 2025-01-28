@@ -4,7 +4,7 @@ mod utils;
 use anyhow::Context;
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use utils::find_taxon;
 
@@ -15,13 +15,25 @@ fn main() -> anyhow::Result<()> {
     let db: Vec<utils::FunGuildEntry> = utils::json_to_hashmap()?;
 
     // Parse CLI arguments
-    let taxon = matches.get_one::<String>("TAXON").unwrap();
+    let mut taxon = Vec::new();
+    if let Some(filepath) = matches.get_one::<String>("file") {
+        let file =
+            File::open(filepath).with_context(|| format!("Failed to open file {}", filepath))?;
+        for line in BufReader::new(file)
+            .lines()
+            .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
+        {
+            taxon.push(line);
+        }
+    } else {
+        taxon.push(matches.get_one::<String>("TAXON").unwrap().to_string());
+    }
     let output = matches.get_one::<String>("out");
     let is_word = matches.get_flag("word");
     let force_output = matches.get_flag("force");
 
     //  Find FunGuild by taxon
-    let result = find_taxon(taxon.to_string(), db, is_word);
+    let result = find_taxon(taxon, db, is_word);
 
     // Parse result as csv and output it
     let result_as_csv = utils::result_to_csv(result)?;

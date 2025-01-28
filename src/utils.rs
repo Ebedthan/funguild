@@ -3,7 +3,7 @@ use csv::Writer;
 use serde::{Deserialize, Serialize};
 use std::io::{BufReader, Read};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FunGuildEntry {
     taxon: String,
@@ -32,14 +32,26 @@ pub fn json_to_hashmap() -> anyhow::Result<Vec<FunGuildEntry>> {
     Ok(db)
 }
 
-pub fn find_taxon(taxon: String, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<FunGuildEntry> {
-    if is_word {
-        db.into_iter().filter(|x| x.taxon == taxon).collect()
-    } else {
-        db.into_iter()
-            .filter(|x| x.taxon.contains(&taxon))
-            .collect()
+pub fn find_taxon(taxon: Vec<String>, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<FunGuildEntry> {
+    let mut result: Vec<FunGuildEntry> = Vec::new();
+    for tax in taxon {
+        if is_word {
+            let mut filtered = db
+                .clone()
+                .into_iter()
+                .filter(|x| x.taxon == tax)
+                .collect::<Vec<FunGuildEntry>>();
+            result.append(&mut filtered);
+        } else {
+            let mut filtered = db
+                .clone()
+                .into_iter()
+                .filter(|x| x.taxon.contains(&tax))
+                .collect::<Vec<FunGuildEntry>>();
+            result.append(&mut filtered)
+        }
     }
+    result
 }
 
 pub fn result_to_csv(data: Vec<FunGuildEntry>) -> anyhow::Result<String> {
