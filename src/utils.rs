@@ -1,3 +1,4 @@
+use anyhow::Context;
 use csv::Writer;
 use serde::{Deserialize, Serialize};
 use std::io::{BufReader, Read};
@@ -19,13 +20,16 @@ pub struct FunGuildEntry {
     citation_source: String,
 }
 
-pub fn json_to_hashmap() -> Vec<FunGuildEntry> {
+pub fn json_to_hashmap() -> anyhow::Result<Vec<FunGuildEntry>> {
     static FUNGUILD_DB: &str = include_str!(r"funguild2.json");
     let mut reader = BufReader::new(FUNGUILD_DB.as_bytes());
     let mut buffer = String::new();
-    reader.read_to_string(&mut buffer).unwrap();
-    let db: Vec<FunGuildEntry> = serde_json::from_str(&buffer).unwrap();
-    db
+    reader
+        .read_to_string(&mut buffer)
+        .with_context(|| format!("Failed to read data to string"))?;
+    let db: Vec<FunGuildEntry> =
+        serde_json::from_str(&buffer).with_context(|| format!("Failed to deserialize string"))?;
+    Ok(db)
 }
 
 pub fn find_taxon(taxon: String, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<FunGuildEntry> {
@@ -38,10 +42,13 @@ pub fn find_taxon(taxon: String, db: Vec<FunGuildEntry>, is_word: bool) -> Vec<F
     }
 }
 
-pub fn result_to_csv(data: Vec<FunGuildEntry>) -> String {
+pub fn result_to_csv(data: Vec<FunGuildEntry>) -> anyhow::Result<String> {
     let mut writer = Writer::from_writer(vec![]);
     for record in data {
-        writer.serialize(record).unwrap();
+        writer
+            .serialize(record)
+            .with_context(|| format!("Failed to serialize record"))?;
     }
-    String::from_utf8(writer.into_inner().unwrap()).unwrap()
+    Ok(String::from_utf8(writer.into_inner()?)
+        .with_context(|| format!("Failed to convert to String"))?)
 }

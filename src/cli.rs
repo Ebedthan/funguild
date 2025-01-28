@@ -22,6 +22,12 @@ pub fn build_app() -> Command {
                 .value_name("FILE")
                 .value_parser(is_existing),
         )
+        .arg(
+            Arg::new("force")
+                .long("force")
+                .help("erase output file")
+                .action(ArgAction::SetTrue),
+        )
 }
 
 fn is_existing(s: &str) -> Result<String, String> {
